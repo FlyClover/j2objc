@@ -1119,6 +1119,27 @@ public final class Posix implements Os {
       return -1;
     }
     const struct sockaddr *to = inetAddress ? (const struct sockaddr *) &ss : NULL;
+    if (to) {
+      int fdInt = [fd getInt$];
+      if (fdInt != -1) {
+        int type = 0;
+        socklen_t size = sizeof(type);
+        int rc = TEMP_FAILURE_RETRY(getsockopt(fdInt, SOL_SOCKET, SO_TYPE, &type, &size));
+        LibcoreIoPosix_throwIfMinusOneWithNSString_withInt_(@"getsockopt", rc);
+        if (rc == -1) {
+          return rc;
+        }
+        if (type == SOCK_DGRAM) {
+          struct sockaddr_storage peer;
+          size = sizeof(peer);
+          rc = getpeername(fdInt, (struct sockaddr*) &peer, &size);
+          if (!rc) {
+            to = NULL;
+            sa_len = 0;
+          }
+        }
+      }
+    }
     return (int) NET_FAILURE_RETRY(
         ssize_t, sendto, fd, bytes + byteOffset, byteCount, flags, to, sa_len);
   ]-*/;
